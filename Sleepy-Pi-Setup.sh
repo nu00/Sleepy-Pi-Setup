@@ -158,18 +158,23 @@ set +x
 ##-------------------------------------------------------------------------------------------------
 
 ## Install Arduino
-echo 'Installing Arduino IDE...'
-program="arduino"
-condition=$(which $program 2>/dev/null | grep -v "not found" | wc -l)
-if [ $condition -eq 0 ] ; then
-    apt-get install -y arduino
-    # create the default sketchbook and libraries that the IDE would normally create on first run
-    mkdir $userFilePath/sketchbook
-    mkdir $userFilePath/sketchbook/libraries
+echo 'Do you want to install the Arduino IDE?'
+read ArduinoInput
+if [[ "$ArduinoInput" == "Y" || "$ArduinoInput" == "y" ]]; then
+    echo 'Installing Arduino IDE...'
+    program="arduino"
+    condition=$(which $program 2>/dev/null | grep -v "not found" | wc -l)
+    if [ $condition -eq 0 ] ; then
+        apt-get install -y arduino
+        # create the default sketchbook and libraries that the IDE would normally create on first run
+        mkdir $userFilePath/sketchbook
+        mkdir $userFilePath/sketchbook/libraries
+    else
+        echo "Arduino IDE is already installed - skipping"
+    fi
 else
-    echo "Arduino IDE is already installed - skipping"
+    echo "Skipping Arduino installation"
 fi
-
 
 ##-------------------------------------------------------------------------------------------------
 
@@ -187,7 +192,7 @@ echo 'Enable Serial Port...'
 if grep -q 'enable_uart=1' $filepath/config.txt; then
     echo 'enable_uart=1 is already set - skipping'
 else
-    echo 'enable_uart=1' | sudo tee -a $filepath
+    echo 'enable_uart=1' | sudo tee -a $filepath/config.txt
 fi
 if grep -q 'core_freq=250' $filepath/config.txt; then
     echo 'The frequency of GPU processor core is set to 250MHz already - skipping'
@@ -261,92 +266,98 @@ else
 fi
 
 ##-------------------------------------------------------------------------------------------------
+echo 'Do you want to add the Sleepy Pi to the Arduino Enviroment?'
+read ArduinoEnvInput
+if [[ "$ArduinoEnvInput" == "Y" || "$ArduinoEnvInput" == "y" ]]; then
+    ## Adding the Sleepy Pi to the Arduino environment
+    echo 'Adding the Sleepy Pi to the Arduino environment...'
+    # ...setup sketchbook
+    mkdir -p $userFilePath/sketchbook
+    # ...setup sketchbook/libraries
+    mkdir -p $userFilePath/sketchbook/libraries
+    # .../sketchbook/hardware
+    mkdir -p $userFilePath/sketchbook/hardware
+    # .../sketchbook/hardware/sleepy_pi2
+    if [ -d "$userFilePath/sketchbook/hardware/sleepy_pi2" ]; then
+        echo "sketchbook/hardware/sleepy_pi2 exists - skipping..."
+    else
+        mkdir $userFilePath/sketchbook/hardware/sleepy_pi2
+        wget https://raw.githubusercontent.com/SpellFoundry/Sleepy-Pi-Setup/master/boards.txt
+        mv boards.txt $userFilePath/sketchbook/hardware/sleepy_pi2
+    fi
 
-## Adding the Sleepy Pi to the Arduino environment
-echo 'Adding the Sleepy Pi to the Arduino environment...'
-# ...setup sketchbook
-mkdir -p $userFilePath/sketchbook
-# ...setup sketchbook/libraries
-mkdir -p $userFilePath/sketchbook/libraries
-# .../sketchbook/hardware
-mkdir -p $userFilePath/sketchbook/hardware
-# .../sketchbook/hardware/sleepy_pi2
-if [ -d "$userFilePath/sketchbook/hardware/sleepy_pi2" ]; then
-    echo "sketchbook/hardware/sleepy_pi2 exists - skipping..."
+    # .../sketchbook/hardware/sleepy_pi
+    if [ -d "$userFilePath/sketchbook/hardware/sleepy_pi" ]; then
+        echo "sketchbook/hardware/sleepy_pi exists - skipping..."
+    else
+        mkdir $userFilePath/sketchbook/hardware/sleepy_pi
+        wget https://raw.githubusercontent.com/SpellFoundry/Sleepy-Pi-Setup/master/boards.txt
+        mv boards.txt $userFilePath/sketchbook/hardware/sleepy_pi
+    fi
+
+    ## Setup the Sleepy Pi Libraries
+    echo 'Setting up the Sleepy Pi Libraries...'
+    cd $userFilePath/sketchbook/libraries/
+    if [ -d "$userFilePath/sketchbook/libraries/SleepyPi2" ]; then
+        echo "SleepyPi2 Library exists - skipping..."
+        # could do a git pull here?
+    else
+        echo "Installing SleepyPi 2 Library..."
+        git clone https://github.com/SpellFoundry/SleepyPi2.git
+    fi
+    if [ -d "$userFilePath/sketchbook/libraries/SleepyPi" ]; then
+        echo "SleepyPi Library exists - skipping..."
+        # could do a git pull here?
+    else
+        echo "Installing SleepyPi Library..."
+        git clone https://github.com/SpellFoundry/SleepyPi.git
+    fi
+
+    if [ -d "$userFilePath/sketchbook/libraries/Time" ]; then
+        echo "Time Library exists - skipping..."
+    else
+        echo "Installing Time Library..."
+        git clone https://github.com/PaulStoffregen/Time.git
+    fi
+
+    if [ -d "$userFilePath/sketchbook/libraries/LowPower" ]; then
+        echo "LowPower Library exists - skipping..."
+    else
+        echo "Installing LowPower Library..."
+        git clone https://github.com/rocketscream/Low-Power.git
+        # rename the directory as Arduino doesn't like the dash
+        mv $userFilePath/sketchbook/libraries/Low-Power $userFilePath/sketchbook/libraries/LowPower
+    fi
+
+
+    # Sleepy Pi 1
+    if [ -d "$userFilePath/sketchbook/libraries/DS1374RTC" ]; then
+        echo "DS1374RTC Library exists - skipping..."
+    else
+        echo "Installing DS1374RTC Library..."
+        git clone https://github.com/SpellFoundry/DS1374RTC.git
+    fi
+
+    # Sleepy Pi 2
+    if [ -d "$userFilePath/sketchbook/libraries/PCF8523" ]; then
+        echo "PCF8523 Library exists - skipping..."
+    else
+        echo "Installing PCF8523 Library..."
+        git clone https://github.com/SpellFoundry/PCF8523.git
+    fi
+
+
+    if [ -d "$userFilePath/sketchbook/libraries/PinChangeInt" ]; then
+        echo "PinChangeInt Library exists - skipping..."
+    else
+        echo "Installing PinChangeInt Library..."
+        git clone https://github.com/GreyGnome/PinChangeInt.git
+    fi
+    cd ~
 else
-    mkdir $userFilePath/sketchbook/hardware/sleepy_pi2
-    wget https://raw.githubusercontent.com/SpellFoundry/Sleepy-Pi-Setup/master/boards.txt
-    mv boards.txt $userFilePath/sketchbook/hardware/sleepy_pi2
+    echo "Adding the Sleepy Pi to the Arduino environment skipped"
 fi
 
-# .../sketchbook/hardware/sleepy_pi
-if [ -d "$userFilePath/sketchbook/hardware/sleepy_pi" ]; then
-    echo "sketchbook/hardware/sleepy_pi exists - skipping..."
-else
-    mkdir $userFilePath/sketchbook/hardware/sleepy_pi
-    wget https://raw.githubusercontent.com/SpellFoundry/Sleepy-Pi-Setup/master/boards.txt
-    mv boards.txt $userFilePath/sketchbook/hardware/sleepy_pi
-fi
-
-## Setup the Sleepy Pi Libraries
-echo 'Setting up the Sleepy Pi Libraries...'
-cd $userFilePath/sketchbook/libraries/
-if [ -d "$userFilePath/sketchbook/libraries/SleepyPi2" ]; then
-    echo "SleepyPi2 Library exists - skipping..."
-    # could do a git pull here?
-else
-    echo "Installing SleepyPi 2 Library..."
-    git clone https://github.com/SpellFoundry/SleepyPi2.git
-fi
-if [ -d "$userFilePath/sketchbook/libraries/SleepyPi" ]; then
-    echo "SleepyPi Library exists - skipping..."
-    # could do a git pull here?
-else
-    echo "Installing SleepyPi Library..."
-    git clone https://github.com/SpellFoundry/SleepyPi.git
-fi
-
-if [ -d "$userFilePath/sketchbook/libraries/Time" ]; then
-    echo "Time Library exists - skipping..."
-else
-    echo "Installing Time Library..."
-    git clone https://github.com/PaulStoffregen/Time.git
-fi
-
-if [ -d "$userFilePath/sketchbook/libraries/LowPower" ]; then
-    echo "LowPower Library exists - skipping..."
-else
-    echo "Installing LowPower Library..."
-    git clone https://github.com/rocketscream/Low-Power.git
-    # rename the directory as Arduino doesn't like the dash
-    mv $userFilePath/sketchbook/libraries/Low-Power $userFilePath/sketchbook/libraries/LowPower
-fi
-
-
- # Sleepy Pi 1
-if [ -d "$userFilePath/sketchbook/libraries/DS1374RTC" ]; then
-    echo "DS1374RTC Library exists - skipping..."
-else
-    echo "Installing DS1374RTC Library..."
-    git clone https://github.com/SpellFoundry/DS1374RTC.git
-fi
-
-# Sleepy Pi 2
-if [ -d "$userFilePath/sketchbook/libraries/PCF8523" ]; then
-    echo "PCF8523 Library exists - skipping..."
-else
-    echo "Installing PCF8523 Library..."
-    git clone https://github.com/SpellFoundry/PCF8523.git
-fi
-
-
-if [ -d "$userFilePath/sketchbook/libraries/PinChangeInt" ]; then
-    echo "PinChangeInt Library exists - skipping..."
-else
-    echo "Installing PinChangeInt Library..."
-    git clone https://github.com/GreyGnome/PinChangeInt.git
-fi
-cd ~
 
 
 ##-------------------------------------------------------------------------------------------------
